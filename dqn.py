@@ -15,7 +15,7 @@ from skimage import transform, color, exposure
 from os import path
 
 
-SAVE_PATH = "/Users/matthiaswettstein/CloudStation/Hack/Python/Udacity/MLE/06P_Capstone/final"
+SAVE_PATH = "/Users/matthiaswettstein/CloudStation/Hack/Python/Udacity/MLE/06P_Capstone/05_Storage"
 MH5 = path.join(SAVE_PATH, "model.h5")
 MJS = path.join(SAVE_PATH, "model.json")
 EXPLORATION_STEPS = float(1e6) # dqn, p.6
@@ -75,8 +75,9 @@ def train_network(model, env, args):
 	# 1) Prepare training
 	# Instantiate replay memory (D)
 	D = deque()
-	# Initialize epsilon 
+	# Initialize epsilon and alpha
 	epsilon = args.epsilon[0]
+	alpha = args.alpha
 	
 	# Start episode
 	# Initialize the number of episodes (E) played, reset step counter (t) over all episodes
@@ -98,7 +99,7 @@ def train_network(model, env, args):
 			if t % args.fpa == 0:
 				# Choose random action
 				if random.random() <= epsilon:
-					action_type = "random"
+					action_type = "R"
 					a_t = random.randrange(actions)
 				# Choose maxQ action
 				else:
@@ -118,8 +119,10 @@ def train_network(model, env, args):
 			D.append((s_t, a_t, r_t, s_t1, done))
 			if len(D) > REPLAY_MEMORY: D.popleft()
 				
-			# Anneal the epsilon during exploration steps
+			# Anneal epsilon during exploration steps, and alpha during total steps
+			# http://stackoverflow.com/questions/1854659/alpha-and-gamma-parameters-in-qlearning
 			if epsilon > args.epsilon[1]: epsilon -= (args.epsilon[0] - args.epsilon[1]) / EXPLORATION_STEPS
+			alpha -= alpha / TOTAL_STEPS
 				
 			# We only train when D is at least the size of the batch
 			if t >= args.batch_size:
@@ -141,7 +144,7 @@ def train_network(model, env, args):
 					# Compute target model (for supervised nn)
 					targets[i] = model.predict(state_t) # Initialize targets for all actions
 					Q_sa = model.predict(state_t1)
-					targets[i, action_t] = reward_t if done else args.alpha * (reward_t + args.gamma * np.max(Q_sa))
+					targets[i, action_t] = args.alpha * (reward_t + args.gamma * np.max(Q_sa)) if not done else reward_t
 			
 				# Calculate loss for complete minibatch (backpropagation?) ###
 				loss += model.train_on_batch(inputs, targets)
@@ -156,8 +159,7 @@ def train_network(model, env, args):
 				with open(MJS, "w") as outfile: json.dump(model.to_json(), outfile)
 			
 			# Print step info
-			state = "Explore" if t <= EXPLORATION_STEPS else "Train"
-			print("Episode: {}, Step: {}, State: {}, Epsilon: {}, Action: {} ({}), Reward: {}, max(Q): {}, Loss: {}".format(E, t, state, epsilon, a_t, action_type, r_t, np.max(Q_sa), loss)) ### _ info  
+			print("Episode: {}, Step: {}, Explore: {}, Action: {} ({}), Reward: {}, Loss: {}".format(E, t, t <= EXPLORATION_STEPS, a_t, action_type, r_t, loss))
 			  
 		E += 1
 		

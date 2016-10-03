@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-python /Users/matthiaswettstein/CloudStation/Hack/Python/Udacity/MLE/06P_Capstone/04_DQN_PG/DQN.py -env 'Pong-v0' -D 4 84 -epsilon 1 0.1 -gamma 0.99 -batch_size 32 -fpa 4 -reward_clip 't' -render 't'
+python /Users/matthiaswettstein/CloudStation/Hack/Python/Udacity/MLE/06P_Capstone/04_DQN_PG/DQN.py -env 'Pong-v0' -D 4 84 -epsilon 1 0.1 -gamma 0.99 -alpha 0.1 -batch_size 32 -fpa 4 -reward_clip 't' -render 't'
 
 
 -- alpha (between 1 and 3)
