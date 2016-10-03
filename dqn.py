@@ -23,6 +23,13 @@ TOTAL_STEPS = float(10e6) # dqn, p.6
 REPLAY_MEMORY = 1e6 # dqn, p.6
 
 
+def _create_environment(env_name):
+	env = gym.make(env_name)
+	input_type = '2d' if len(env.observation_space.shape) > 2 else '1d'
+	actions = env.action_space.n
+	return env, [input_type, actions]
+
+
 def _parse_args():
 	parser = argparse.ArgumentParser(add_help=False)
 	parser.add_argument("-env", type=str, required=True)
@@ -53,13 +60,19 @@ def preprocess_img(x, args, s_t=None):
 	return s
 
 
-def _create_network(env, args):
+def preprocess_vec(x, args):
+	# Initial processing: Stack 4 vectors on top of each other
+	pass
+	# Non-init processing: Replace 1 out of n vectors
+	
+
+def _create_network(env_specs, args):
+	input_type, actions = env_specs
 	# Secure dimension ordering for Theano, even if running on Tensorflow
 	K.set_image_dim_ordering('th')
-	# Define input shape
-	input_type = '2d' if str(env.observation_space).find("Box") >= 0 else '1d'
 	# Create model
 	model = Sequential()
+	
 	if input_type == '2d':
 		model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same', init='glorot_normal', activation='relu', input_shape=(args.D[0], args.D[1], args.D[1])))
 		model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same', init='glorot_normal', activation='relu'))
@@ -67,15 +80,15 @@ def _create_network(env, args):
 		model.add(Flatten()) 
 		model.add(Dense(512, init='glorot_normal', activation='relu'))
 	else:
-		model.add(Dense(512, init='glorot_normal', activation='relu'), input_shape=(args.D[0] * args.D[1] * args.D[1],))
-	model.add(Dense(env.action_space.n, init='glorot_normal'))
+		model.add(Dense(512, init='glorot_normal', activation='relu', input_shape=(args.D[0] * args.D[1] * args.D[1],)))
+	model.add(Dense(actions, init='glorot_normal'))
 	adam = Adam(lr=1e-6)
 	model.compile(loss='mse', optimizer=adam) #model.compile(sgd(lr=self.learning_rate), "mse") ###
 	return model
 
 
-def train_network(model, env, args):
-	actions = env.action_space.n
+def train_network(model, env, env_specs, args):
+	input_type, actions = env_specs
 	# 1) Prepare training
 	# Instantiate replay memory (D)
 	D = deque()
@@ -91,15 +104,15 @@ def train_network(model, env, args):
 		# Get the first state by doing random
 		x_t, r_0, done, info = env.step(env.action_space.sample())
 		# Preprocess the initial state to grayscale and resized dimensions, if 2d
-		s_t = preprocess_img(x_t, args)  
-		
+		s_t = preprocess_img(x_t, args) if input_type == '2d' else print(x_t)
+	
 		# Start training steps for each episode
 		while not done:
 			if args.render == 't': env.render()
 			# Initialize trial variables
 			loss = Q_sa = r_t = 0
 			
-			# Choose an action epsilon greedy if in training, if needed #frames has passed
+			# Choose an action epsilon greedy if in training, if #frames has passed
 			if t % args.fpa == 0:
 				# Choose random action
 				if random.random() <= epsilon:
@@ -114,7 +127,9 @@ def train_network(model, env, args):
 				
 			# Run the selected action and observe next state and reward     
 			x_t1_raw, r_t, done, info = env.step(a_t)
-			s_t1 = preprocess_img(x_t1_raw, args, s_t)
+			
+			'''	
+			s_t1 = preprocess_img(x_t1_raw, args, s_t) if input_type == '2d' else x_t1_raw
 			
 			# Clip rewards
 			if args.reward_clip == 't' and r_t != 0: r_t = abs(r_t)/r_t
@@ -166,15 +181,15 @@ def train_network(model, env, args):
 			print("Episode: {}, Step: {}, Explore: {}, Action: {} ({}), Reward: {}, Loss: {}".format(E, t, t <= EXPLORATION_STEPS, a_t, action_type, r_t, loss))
 			  
 		E += 1
-		
+		'''
+
 if __name__ == "__main__":
 	args = _parse_args()
 	
 	# Prepare games
-	env = gym.make(args.env)
-	if str(env.observation_space).find("Box") >= 0: input_dim = '2d'
+	env, env_specs = _create_environment(args.env)
 	env.reset()
-	net = _create_network(env, args)
+	net = _create_network(env_specs, args)
 
 	# Go for one epoch/episode
-	train = train_network(net, env, args)
+	train = train_network(net, env, env_specs, args)
