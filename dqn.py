@@ -29,6 +29,8 @@ def _parse_args():
 	parser.add_argument("-D", nargs='+', type=int, required=True)
 	parser.add_argument('-epsilon', nargs='+', type=float, required=True)
 	parser.add_argument("-gamma", type=float, required=True)
+	# To what extent the newly acquired information will override the old one: Learning rate alpha
+	parser.add_argument("-alpha", type=float, required=True) 
 	parser.add_argument("-batch_size", type=int, required=True)
 	parser.add_argument("-fpa", type=int, required=True)
 	parser.add_argument("-reward_clip", type=str, required=True)
@@ -51,7 +53,7 @@ def preprocess_img(x, args, s_t=None):
 	return s
 
 
-def _create_network(actions, args):
+def _create_network(env, args):
 	# Secure dimension ordering for Theano, even if running on Tensorflow
 	K.set_image_dim_ordering('th')
 	# Create model
@@ -62,13 +64,14 @@ def _create_network(actions, args):
 	model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same', init='glorot_normal', activation='relu'))
 	model.add(Flatten()) 
 	model.add(Dense(512, init='glorot_normal', activation='relu'))
-	model.add(Dense(actions, init='glorot_normal'))
+	model.add(Dense(env.action_space.n, init='glorot_normal'))
 	adam = Adam(lr=1e-6)
 	model.compile(loss='mse', optimizer=adam) #model.compile(sgd(lr=self.learning_rate), "mse") ###
 	return model
 
 
-def train_network(model, env, actions, args):
+def train_network(model, env, args):
+	actions = env.action_space.n
 	# 1) Prepare training
 	# Instantiate replay memory (D)
 	D = deque()
@@ -89,9 +92,7 @@ def train_network(model, env, actions, args):
 		while not done:
 			if args.render == 't': env.render()
 			# Initialize trial variables
-			loss = 0
-			Q_sa = 0
-			r_t = 0
+			loss = Q_sa = r_t = 0
 			
 			# Choose an action epsilon greedy if in training, if needed #frames has passed
 			if t % args.fpa == 0:
@@ -140,7 +141,7 @@ def train_network(model, env, actions, args):
 					# Compute target model (for supervised nn)
 					targets[i] = model.predict(state_t) # Initialize targets for all actions
 					Q_sa = model.predict(state_t1)
-					targets[i, action_t] = reward_t if done else reward_t + args.gamma * np.max(Q_sa)
+					targets[i, action_t] = reward_t if done else args.alpha * (reward_t + args.gamma * np.max(Q_sa))
 			
 				# Calculate loss for complete minibatch (backpropagation?) ###
 				loss += model.train_on_batch(inputs, targets)
@@ -156,19 +157,17 @@ def train_network(model, env, actions, args):
 			
 			# Print step info
 			state = "Explore" if t <= EXPLORATION_STEPS else "Train"
-			
-			print("Episode: {}, Step: {}, State: {}, Epsilon: {}, Action: {} ({}), Reward: {}, max(Q): {}, Loss: {}".format(E, t, state, epsilon, a_t, action_type, r_t, np.max(Q_sa), loss)) ### _ info    
-	
+			print("Episode: {}, Step: {}, State: {}, Epsilon: {}, Action: {} ({}), Reward: {}, max(Q): {}, Loss: {}".format(E, t, state, epsilon, a_t, action_type, r_t, np.max(Q_sa), loss)) ### _ info  
+			  
 		E += 1
 		
 if __name__ == "__main__":
 	args = _parse_args()
 	
 	# Prepare games
-	env = gym.make(env_id)
+	env = gym.make(args.env)
 	env.reset()
-	actions = env.action_space.n
-	net = _create_network(actions, args)
+	net = _create_network(env, args)
 
 	# Go for one epoch/episode
-	train = train_network(net, env, actions, args)
+	train = train_network(net, env, args)
