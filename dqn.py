@@ -56,14 +56,18 @@ def preprocess_img(x, args, s_t=None):
 def _create_network(env, args):
 	# Secure dimension ordering for Theano, even if running on Tensorflow
 	K.set_image_dim_ordering('th')
+	# Define input shape
+	input_type = '2d' if str(env.observation_space).find("Box") >= 0 else '1d'
 	# Create model
 	model = Sequential()
-	input_shape = (args.D[0], args.D[1], args.D[1])
-	model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same', init='glorot_normal', activation='relu', input_shape=input_shape))
-	model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same', init='glorot_normal', activation='relu'))
-	model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same', init='glorot_normal', activation='relu'))
-	model.add(Flatten()) 
-	model.add(Dense(512, init='glorot_normal', activation='relu'))
+	if input_type == '2d':
+		model.add(Convolution2D(32, 8, 8, subsample=(4, 4), border_mode='same', init='glorot_normal', activation='relu', input_shape=(args.D[0], args.D[1], args.D[1])))
+		model.add(Convolution2D(64, 4, 4, subsample=(2, 2), border_mode='same', init='glorot_normal', activation='relu'))
+		model.add(Convolution2D(64, 3, 3, subsample=(1, 1), border_mode='same', init='glorot_normal', activation='relu'))
+		model.add(Flatten()) 
+		model.add(Dense(512, init='glorot_normal', activation='relu'))
+	else:
+		model.add(Dense(512, init='glorot_normal', activation='relu'), input_shape=(args.D[0] * args.D[1] * args.D[1],))
 	model.add(Dense(env.action_space.n, init='glorot_normal'))
 	adam = Adam(lr=1e-6)
 	model.compile(loss='mse', optimizer=adam) #model.compile(sgd(lr=self.learning_rate), "mse") ###
@@ -168,6 +172,7 @@ if __name__ == "__main__":
 	
 	# Prepare games
 	env = gym.make(args.env)
+	if str(env.observation_space).find("Box") >= 0: input_dim = '2d'
 	env.reset()
 	net = _create_network(env, args)
 
