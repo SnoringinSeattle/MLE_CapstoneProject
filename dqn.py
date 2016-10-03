@@ -36,13 +36,19 @@ def _parse_args():
 	return parser.parse_args() 
 	
 
-def _create_environment(env_id):
-	env = gym.make(env_id)
-	return env
-
-
-def reset_environment(env):
-	env.reset()
+def preprocess_img(x, args, s_t=None):
+	x = color.rgb2gray(x)
+	x = transform.resize(x, (args.D[1], args.D[1]))
+	x = exposure.rescale_intensity(x, out_range=(0,255))
+	if np.any(s_t) == None:
+		# Initial processing: Stack one single frame 4 times on top of each other
+		s = np.stack([x for _ in range(args.D[0])], axis=0) #s = np.stack((x, x, x, x), axis=0) 
+		s = s.reshape(1, s.shape[0], s.shape[1], s.shape[2])
+	else:
+		# Non-init processing: Replace 1 out of n frames
+		x = x.reshape(1, 1, x.shape[0], x.shape[1])
+		s = np.append(x, s_t[:, :args.D[0]-1, :, :], axis=1)
+	return s
 
 
 def _create_network(actions, args):
@@ -62,21 +68,6 @@ def _create_network(actions, args):
 	return model
 
 
-def preprocess_img(x, args, s_t=None):
-	x = color.rgb2gray(x)
-	x = transform.resize(x, (args.D[1], args.D[1]))
-	x = exposure.rescale_intensity(x, out_range=(0,255))
-	if np.any(s_t) == None:
-		# Initial processing: Stack one single frame 4 times on top of each other
-		s = np.stack([x for _ in range(args.D[0])], axis=0) #s = np.stack((x, x, x, x), axis=0) 
-		s = s.reshape(1, s.shape[0], s.shape[1], s.shape[2])
-	else:
-		# Non-init processing: Replace 1 out of n frames
-		x = x.reshape(1, 1, x.shape[0], x.shape[1])
-		s = np.append(x, s_t[:, :args.D[0]-1, :, :], axis=1)
-	return s
-
-
 def train_network(model, env, actions, args):
 	# 1) Prepare training
 	# Instantiate replay memory (D)
@@ -88,7 +79,7 @@ def train_network(model, env, actions, args):
 	# Initialize the number of episodes (E) played, reset step counter (t) over all episodes
 	E = t = 0
 	while t <= TOTAL_STEPS:
-		reset_environment(env)
+		env.reset()
 		# Get the first state by doing random
 		x_t, r_0, done, info = env.step(env.action_space.sample())
 		# Preprocess the initial state to grayscale and resized dimensions, if 2d
@@ -174,8 +165,8 @@ if __name__ == "__main__":
 	args = _parse_args()
 	
 	# Prepare games
-	env = _create_environment(args.env)
-	reset_environment(env)
+	env = gym.make(env_id)
+	env.reset()
 	actions = env.action_space.n
 	net = _create_network(actions, args)
 
