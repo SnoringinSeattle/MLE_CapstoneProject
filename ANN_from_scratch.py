@@ -11,6 +11,7 @@ def sigmoid_derivative(x):
 np.random.seed(324)
 
 hidden_size = 4
+training_steps = 100000
 
 alphas = [0.01, 0.1, 1, 10, 100, 1000]
 
@@ -26,7 +27,7 @@ W1 = np.random.rand(X.shape[1], hidden_size)
 W2 = np.random.rand(hidden_size, y.shape[1])
 
 for alpha in alphas:
-	for i in range(1000000):
+	for i in range(training_steps):
 		# Initialize hidden (fully connected) layer
 		layer_1 = sigmoid(np.dot(X, W1))
 
@@ -36,13 +37,8 @@ for alpha in alphas:
 		# Get loss (MSE)
 		layer_2_loss = y - layer_2
 		
-		best_layer_2_loss = (0, 0, 10000000000)
-		if (i % 10000) == 0:
-			mean_layer_2_loss = np.mean(np.abs(layer_2_loss))
-			print alpha, i, "Error:" + str(mean_layer_2_loss)
-			if mean_layer_2_loss < best_layer_2_loss[2]: best_layer_2_loss = (alpha, i, mean_layer_2_loss)
+		if i % (training_steps/10) == 0: print alpha, "Error:" + str(np.mean(np.abs(layer_2_loss)))
 			
-
 		# Apply SGD to the loss: the more certain the estimate, the less weighted it will get: the gradient at the extremes is smaller than in the middle
 		layer_2_wloss = layer_2_loss * sigmoid_derivative(layer_2) # element-wise multiplication!
 
@@ -58,5 +54,3 @@ for alpha in alphas:
 		# Update the weights
 		W2 += alpha * np.dot(layer_1.T, layer_2_wloss)
 		W1 += alpha * np.dot(X.T, layer_1_wloss)
-
-print best_layer_2_loss
