@@ -24,3 +24,8 @@ for i_episode in range(1):
 		if done:
 			print("Episode finished after {} timesteps".format(t+1))
 			break
+
+
+### todo
+
+# fpa

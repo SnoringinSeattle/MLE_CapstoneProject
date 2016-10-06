@@ -128,7 +128,6 @@ def train_network(model, env, env_specs, args):
 			# Run the selected action and observe next state and reward     
 			x_t1_raw, r_t, done, info = env.step(a_t)
 			
-			'''	
 			s_t1 = preprocess_img(x_t1_raw, args, s_t) if input_type == '2d' else x_t1_raw
 			
 			# Clip rewards
@@ -150,6 +149,7 @@ def train_network(model, env, env_specs, args):
 				# Instantiate inputs
 				inputs = np.zeros((args.batch_size, s_t.shape[1], s_t.shape[2], s_t.shape[3]))
 				targets = np.zeros((args.batch_size, actions))
+				print(inputs.shape, targets.shape)
 				
 				# Perform experience replay on minibatch
 				for i in range(0, len(minibatch)):
@@ -178,10 +178,9 @@ def train_network(model, env, env_specs, args):
 				with open(MJS, "w") as outfile: json.dump(model.to_json(), outfile)
 			
 			# Print step info
-			print("Episode: {}, Step: {}, Explore: {}, Action: {} ({}), Reward: {}, Loss: {}".format(E, t, t <= EXPLORATION_STEPS, a_t, action_type, r_t, loss))
+			###print("Episode: {}, Step: {}, Explore: {}, Action: {} ({}), Reward: {}, Loss: {}".format(E, t, t <= EXPLORATION_STEPS, a_t, action_type, r_t, loss))
 			  
 		E += 1
-		'''
 
 if __name__ == "__main__":
 	args = _parse_args()
