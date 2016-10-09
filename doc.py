@@ -24,3 +24,14 @@ for i_episode in range(1):
 		if done:
 			print("Episode finished after {} timesteps".format(t+1))
 			break
+
+http://www.cloudera.com/documentation/enterprise/5-5-x/topics/spark_python.html
+https://aws.amazon.com/emr/details/spark/
+https://districtdatalabs.silvrback.com/getting-started-with-spark-in-python
+https://github.com/osh/kerlym/blob/master/kerlym/networks.py
+http://karpathy.github.io/2016/05/31/rl/
+https://gist.github.com/cadurosar/bd54c723c1d6335a43c8
+https://gist.github.com/EderSantana/1ad56b7720af8d706e7f22cbcb8c6d70
+reinforcement learning policy gradient
+https://keras.io/backend/
+https://www.tensorflow.org/versions/r0.10/api_docs/python/image.html#encoding-and-decoding
