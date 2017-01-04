@@ -1,5 +1,5 @@
 # Udacity Machine Learning Engineer Nanodegree 
-## Capstone Project - Reinforcement Learning Algorithms with OpenAIGym LunarLander-v2
+## Capstone Project: Reinforcement Learning Algorithms with OpenAIGym LunarLander-v2
 
 Software Requirements (Python)
 - numpy
